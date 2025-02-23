@@ -8,7 +8,8 @@ async function bootstrap() {
   app.enableCors({
     origin: [
       'https://danico-pelis.vercel.app', // Tu dominio en Vercel
-      'http://localhost:3001' // Para desarrollo local
+      'http://localhost:3001' ,
+      'http://localhost:3000' 
     ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     allowedHeaders: 'Content-Type,Authorization',
