@@ -8,15 +8,19 @@ import { Movie, MovieDocument } from './schemas/movie.schema';
 export class MoviesService {
   constructor(@InjectModel(Movie.name) private movieModel: Model<MovieDocument>) {}
 
-  async addMovie(title: string, apiId: string, list: 'Dani' | 'Nico' | 'Juntos', poster?: string) {
+  async addMovie(title: string, apiId: string, list: 'Maca' | 'Nico' | 'Juntos', poster?: string) {
     return new this.movieModel({ title, apiId, list, poster }).save();
   }
 
-  async getMoviesByList(list: 'Dani' | 'Nico' | 'Juntos') {
+  async getMoviesByList(list: 'Maca' | 'Nico' | 'Juntos') {
     return this.movieModel.find({ list });
   }
 
   async markAsWatched(id: string, watched: boolean) {
     return this.movieModel.findByIdAndUpdate(id, { watched }, { new: true });
+  }
+
+  async deleteMovie(id: string) {
+    return this.movieModel.findByIdAndDelete(id);
   }
 }
