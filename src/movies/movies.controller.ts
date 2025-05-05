@@ -10,14 +10,14 @@ export class MoviesController {
 async addMovie(@Body() body: { 
   title: string; 
   apiId: string; 
-  list: 'Maca' | 'Nico' | 'Juntos';
+  list: 'Barbara' | 'Nico' | 'Juntos';
   poster?: string; // Nuevo campo
 }) {
   return this.moviesService.addMovie(body.title, body.apiId, body.list, body.poster);
 }
 
   @Get(':list')
-  async getMovies(@Param('list') list: 'Maca' | 'Nico' | 'Juntos') {
+  async getMovies(@Param('list') list: 'Barbara' | 'Nico' | 'Juntos') {
     return this.moviesService.getMoviesByList(list);
   }
 

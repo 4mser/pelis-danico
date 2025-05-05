@@ -13,7 +13,7 @@ export class Movie {
   apiId: string; // ID de la película en la API externa
 
   @Prop({ required: true })
-  list: 'Maca' | 'Nico' | 'Juntos';
+  list: 'Barbara' | 'Nico' | 'Juntos';
 
   @Prop({ default: false })
   watched: boolean;

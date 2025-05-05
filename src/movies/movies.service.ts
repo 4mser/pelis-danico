@@ -8,11 +8,11 @@ import { Movie, MovieDocument } from './schemas/movie.schema';
 export class MoviesService {
   constructor(@InjectModel(Movie.name) private movieModel: Model<MovieDocument>) {}
 
-  async addMovie(title: string, apiId: string, list: 'Maca' | 'Nico' | 'Juntos', poster?: string) {
+  async addMovie(title: string, apiId: string, list: 'Barbara' | 'Nico' | 'Juntos', poster?: string) {
     return new this.movieModel({ title, apiId, list, poster }).save();
   }
 
-  async getMoviesByList(list: 'Maca' | 'Nico' | 'Juntos') {
+  async getMoviesByList(list: 'Barbara' | 'Nico' | 'Juntos') {
     return this.movieModel.find({ list });
   }
 
