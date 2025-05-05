@@ -7,8 +7,7 @@ async function bootstrap() {
   const port = process.env.PORT || 3000;
   app.enableCors({
     origin: [
-      'https://danico-pelis.vercel.app',
-      'https://nimaca-pelis.vercel.app',
+      'https://pelis-barnico.vercel.app',
       'http://localhost:3001' ,
       'http://localhost:3000' 
     ],
