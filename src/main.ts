@@ -9,6 +9,7 @@ async function bootstrap() {
     origin: [
       'https://pelis-barnico.vercel.app',
       'http://localhost:3001' ,
+      'http://localhost:3002' ,
       'http://localhost:3000' 
     ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
