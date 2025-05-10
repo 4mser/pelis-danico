@@ -1,3 +1,4 @@
+// src/products/products.controller.ts
 import {
     Controller,
     Get,
@@ -15,7 +16,7 @@ import {
   
     @Post()
     async create(
-      @Body() body: { name: string; image: string },
+      @Body() body: { name: string; image?: string }
     ) {
       return this.productsService.create(body.name, body.image);
     }
@@ -31,16 +32,18 @@ import {
     }
   
     @Patch(':id')
-  async update(
-    @Param('id') id: string,
-    @Body() body: {
-      name?: string;
-      image?: string;
-      bought?: boolean;    // permitimos recibir also bought
-    },
-  ) {
-    return this.productsService.update(id, body);
-  }
+    async update(
+      @Param('id') id: string,
+      @Body() body: {
+        name?: string;
+        image?: string;
+        bought?: boolean;
+        likeNico?: boolean;
+        likeBarbara?: boolean;
+      },
+    ) {
+      return this.productsService.update(id, body);
+    }
   
     @Delete(':id')
     async remove(@Param('id') id: string) {
