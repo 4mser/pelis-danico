@@ -1,7 +1,15 @@
+// src/tmdb/tmdb.service.ts
 import { Injectable } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { lastValueFrom } from 'rxjs';
+
+export interface TmdbResult {
+  id: number;
+  title: string;
+  poster: string | null;
+  type: 'movie' | 'series';
+}
 
 @Injectable()
 export class TmdbService {
@@ -13,34 +21,42 @@ export class TmdbService {
     private configService: ConfigService
   ) {
     this.apiKey = this.configService.get<string>('TMDB_API_KEY');
-    console.log('API Key TMDB:', this.apiKey ? 'OK' : 'FALTA'); // 👈 Verifica la clave
   }
 
-  async searchMovies(query: string) {
-    const url = `${this.baseUrl}/search/movie`;
-    console.log(`Solicitando a TMDB: ${url}`); // 👈 Debug de URL
-    
-    try {
-      const response = await lastValueFrom(
-        this.httpService.get(url, {
-          params: {
-            api_key: this.apiKey,
-            query: query,
-            language: 'es-ES'
-          }
-        })
-      );
-      
-      return response.data.results.map(movie => ({
-        id: movie.id,
-        title: movie.title,
-        poster: movie.poster_path 
-          ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
-          : null
-      }));
-    } catch (error) {
-      console.error('Error en TMDB:', error.response?.data || error.message);
-      throw error;
-    }
+  /** Busca películas **y** series */
+  async searchAll(query: string): Promise<TmdbResult[]> {
+    const movieObs = this.httpService.get(`${this.baseUrl}/search/movie`, {
+      params: { api_key: this.apiKey, query, language: 'es-ES' }
+    });
+    const tvObs = this.httpService.get(`${this.baseUrl}/search/tv`, {
+      params: { api_key: this.apiKey, query, language: 'es-ES' }
+    });
+
+    // Ejecuta ambas en paralelo
+    const [movieRes, tvRes] = await Promise.all([
+      lastValueFrom(movieObs),
+      lastValueFrom(tvObs)
+    ]);
+
+    const movies: TmdbResult[] = movieRes.data.results.map(m => ({
+      id: m.id,
+      title: m.title,
+      poster: m.poster_path
+        ? `https://image.tmdb.org/t/p/w500${m.poster_path}`
+        : null,
+      type: 'movie'
+    }));
+
+    const series: TmdbResult[] = tvRes.data.results.map(s => ({
+      id: s.id,
+      title: s.name,
+      poster: s.poster_path
+        ? `https://image.tmdb.org/t/p/w500${s.poster_path}`
+        : null,
+      type: 'series'
+    }));
+
+    // Mezcla y devuelve
+    return [...movies, ...series];
   }
 }
