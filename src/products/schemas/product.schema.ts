@@ -10,6 +10,9 @@ export class Product {
 
   @Prop({ required: true })
   image: string;
+
+  @Prop({ default: false })
+  bought: boolean;        
 }
 
 export const ProductSchema = SchemaFactory.createForClass(Product);

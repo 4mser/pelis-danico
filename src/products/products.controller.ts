@@ -31,12 +31,16 @@ import {
     }
   
     @Patch(':id')
-    async update(
-      @Param('id') id: string,
-      @Body() body: { name?: string; image?: string },
-    ) {
-      return this.productsService.update(id, body);
-    }
+  async update(
+    @Param('id') id: string,
+    @Body() body: {
+      name?: string;
+      image?: string;
+      bought?: boolean;    // permitimos recibir also bought
+    },
+  ) {
+    return this.productsService.update(id, body);
+  }
   
     @Delete(':id')
     async remove(@Param('id') id: string) {

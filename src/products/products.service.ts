@@ -24,7 +24,10 @@ export class ProductsService {
     return prod;
   }
 
-  async update(id: string, data: Partial<{ name: string; image: string }>): Promise<Product> {
+  async update(
+    id: string,
+    data: Partial<{ name: string; image: string; bought: boolean }>
+  ): Promise<Product> {
     const updated = await this.productModel
       .findByIdAndUpdate(id, data, { new: true })
       .exec();
