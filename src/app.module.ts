@@ -7,6 +7,7 @@ import { TmdbModule } from './tmdb/tmdb.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { CouponsModule } from './coupons/coupons.module';
+import { ProductsModule } from './products/products.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { CouponsModule } from './coupons/coupons.module';
     MongooseModule.forRoot(process.env.MONGO_URI),
     MoviesModule,
     TmdbModule,
+    ProductsModule,
     CouponsModule
   ],
   controllers: [AppController],
