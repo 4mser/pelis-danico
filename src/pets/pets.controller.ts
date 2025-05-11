@@ -1,28 +1,28 @@
-import { Controller, Get, Param, Post } from '@nestjs/common';
+// src/pets/pets.controller.ts
+import { Controller, Get, Post, Param } from '@nestjs/common';
 import { PetsService, InteractionType } from './pets.service';
 
 @Controller('pets')
 export class PetsController {
   constructor(private petsService: PetsService) {}
 
-  /** Initialize pet */
+  /** Inicializa (o devuelve) la mascota por defecto */
   @Post()
   createPet() {
-    return this.petsService.createIfNotExists();
+    return this.petsService.getPet();
   }
 
-  /** Get pet stats */
-  @Get(':id')
-  getPet(@Param('id') id: string) {
-    return this.petsService.getPet(id);
+  /** Obtiene el estado de Bunny */
+  @Get()
+  getPet() {
+    return this.petsService.getPet();
   }
 
-  /** Simulate an interaction */
-  @Post(':id/interact/:type')
+  /** Dispara una interacción sobre Bunny */
+  @Post('interact/:type')
   interact(
-    @Param('id') id: string,
     @Param('type') type: InteractionType,
   ) {
-    return this.petsService.handleInteraction(id, type);
+    return this.petsService.handleInteraction(type);
   }
 }
