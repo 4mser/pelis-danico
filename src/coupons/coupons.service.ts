@@ -20,15 +20,17 @@ export class CouponsService {
     private eventEmitter: EventEmitter2,
   ) {}
 
+  /** Crea cupón incluyendo el flag reusable */
   async addCoupon(
     title: string,
     description: string,
     owner: CouponOwner,
+    reusable: boolean,
   ): Promise<Coupon> {
     if (!CouponOwners.includes(owner)) {
       throw new NotFoundException(`Owner inválido: ${owner}`);
     }
-    const coupon = await new this.couponModel({ title, description, owner }).save();
+    const coupon = await new this.couponModel({ title, description, owner, reusable }).save();
     this.eventEmitter.emit('pet.interaction', { type: 'addCoupon' as InteractionType });
     return coupon;
   }
@@ -38,23 +40,20 @@ export class CouponsService {
   }
 
   async getCouponsByOwner(owner: CouponOwner): Promise<Coupon[]> {
-    return this.couponModel
-      .find({ owner })
-      .sort({ createdAt: -1 })
-      .exec();
+    return this.couponModel.find({ owner }).sort({ createdAt: -1 }).exec();
   }
 
   async getCouponById(id: string): Promise<Coupon> {
-    const coupon = await this.couponModel.findById(id).exec();
-    if (!coupon) throw new NotFoundException('Coupon not found');
-    return coupon;
+    const c = await this.couponModel.findById(id).exec();
+    if (!c) throw new NotFoundException('Coupon not found');
+    return c;
   }
 
   /**
-   * Si `redeemed = true`:
-   *   - reusable ⇒ marca redeemed y devuelve el coupon
-   *   - no reusable ⇒ elimina y devuelve `{ deleted: true }`
-   * Si `redeemed = false`: (solo tiene sentido en reusable) desmarca y devuelve el coupon
+   * Al canjear:
+   *  - reusable=false → borra de DB y devuelve { deleted: true }
+   *  - reusable=true  → marca redeemed y devuelve el coupon actualizado
+   * Al descanjear (redeemed=false): sólo reusable, desmarca y devuelve el coupon.
    */
   async redeemCoupon(
     id: string,
@@ -75,16 +74,14 @@ export class CouponsService {
         return { deleted: true };
       }
     } else {
-      // descanjear (solo reusable)
       coupon.redeemed = false;
-      const updated = await coupon.save();
-      return updated;
+      return coupon.save();
     }
   }
 
-  async deleteCoupon(id: string): Promise<{ deleted: boolean }> {
-    const deleted = await this.couponModel.findByIdAndDelete(id).exec();
-    if (!deleted) throw new NotFoundException('Coupon not found');
+  async deleteCoupon(id: string): Promise<{ deleted: true }> {
+    const res = await this.couponModel.findByIdAndDelete(id).exec();
+    if (!res) throw new NotFoundException('Coupon not found');
     return { deleted: true };
   }
 }

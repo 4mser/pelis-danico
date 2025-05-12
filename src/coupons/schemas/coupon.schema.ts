@@ -16,17 +16,17 @@ export class Coupon {
   @Prop({ required: true })
   description: string;
 
-  @Prop({ 
-    required: true, 
-    enum: CouponOwners, 
-    default: 'Barbara' 
+  @Prop({
+    required: true,
+    enum: CouponOwners,
+    default: 'Barbara',
   })
   owner: CouponOwner;
 
   @Prop({ default: false })
   redeemed: boolean;
 
-  /** NUEVO: si es true, no se elimina al canjear */
+  /** Si es true, NO se elimina al canjear */
   @Prop({ default: false })
   reusable: boolean;
 }

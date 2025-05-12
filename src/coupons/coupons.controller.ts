@@ -23,12 +23,14 @@ export class CouponsController {
       title: string;
       description: string;
       owner: typeof CouponOwners[number];
+      reusable?: boolean;
     },
   ): Promise<Coupon> {
     return this.couponsService.addCoupon(
       body.title,
       body.description,
       body.owner,
+      !!body.reusable,
     );
   }
 
