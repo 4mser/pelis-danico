@@ -11,18 +11,17 @@ import { Pet, PetSchema } from './schemas/pet.schema';
 import { Product, ProductSchema } from '../products/schemas/product.schema';
 import { Coupon, CouponSchema } from '../coupons/schemas/coupon.schema';
 import { Movie, MovieSchema } from '../movies/schemas/movie.schema';
-import { StatsModule } from '../stats/stats.module';
 
 @Module({
   imports: [
+    // Registramos todos los modelos para poder inyectar
     MongooseModule.forFeature([
-      { name: Pet.name,     schema: PetSchema },
+      { name: Pet.name, schema: PetSchema },
       { name: Product.name, schema: ProductSchema },
-      { name: Coupon.name,  schema: CouponSchema },
-      { name: Movie.name,   schema: MovieSchema },
+      { name: Coupon.name, schema: CouponSchema },
+      { name: Movie.name, schema: MovieSchema },
     ]),
     EventEmitterModule.forRoot(),
-    StatsModule,  // Importamos StatsModule para poder inyectar StatsService
   ],
   providers: [
     PetsService,

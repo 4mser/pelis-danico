@@ -11,7 +11,6 @@ import { ProductsModule } from './products/products.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
 import { PetsModule } from './pets/pets.module';
-import { StatsModule } from './stats/stats.module';
 
 @Module({
   imports: [
@@ -24,7 +23,6 @@ import { StatsModule } from './stats/stats.module';
     MoviesModule,
     TmdbModule,
     ProductsModule,
-    StatsModule,
     PetsModule,
     CouponsModule
   ],

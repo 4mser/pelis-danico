@@ -1,4 +1,5 @@
 // src/pets/pets.gateway.ts
+
 import {
     WebSocketGateway,
     WebSocketServer,
@@ -19,7 +20,7 @@ import {
       console.log('🐇 PetsGateway listo');
     }
   
-    /** Emite el documento completo de Pet a todos los clientes */
+    /** Ahora sólo recibe el Pet completo */
     broadcastPet(pet: Pet) {
       this.server.emit('pet_update', pet);
     }
