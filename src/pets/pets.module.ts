@@ -10,7 +10,7 @@ import { PetsEventListener } from './pets.event-listener';
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: Pet.name, schema: PetSchema }]),
-    EventEmitterModule, // allow injection of EventEmitter2
+    EventEmitterModule, 
   ],
   providers: [PetsService, PetsEventListener],
   controllers: [PetsController],
