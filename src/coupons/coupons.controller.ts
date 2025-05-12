@@ -24,6 +24,8 @@ export class CouponsController {
       description: string;
       owner: typeof CouponOwners[number];
       reusable?: boolean;
+      /** ISO string o timestamp para expiración */
+      expirationDate?: string;
     },
   ): Promise<Coupon> {
     return this.couponsService.addCoupon(
@@ -31,6 +33,7 @@ export class CouponsController {
       body.description,
       body.owner,
       !!body.reusable,
+      body.expirationDate ? new Date(body.expirationDate) : undefined,
     );
   }
 

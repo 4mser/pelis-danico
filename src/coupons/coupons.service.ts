@@ -20,21 +20,31 @@ export class CouponsService {
     private eventEmitter: EventEmitter2,
   ) {}
 
-  /** Crea cupón incluyendo el flag reusable */
+  /**
+   * Crea un cupón con posible expirationDate para TTL.
+   */
   async addCoupon(
     title: string,
     description: string,
     owner: CouponOwner,
     reusable: boolean,
+    expirationDate?: Date,
   ): Promise<Coupon> {
     if (!CouponOwners.includes(owner)) {
       throw new NotFoundException(`Owner inválido: ${owner}`);
     }
-    const coupon = await new this.couponModel({ title, description, owner, reusable }).save();
+    const dto: Partial<Coupon> = { title, description, owner, reusable };
+    if (expirationDate) dto.expirationDate = expirationDate;
+
+    const coupon = await new this.couponModel(dto).save();
     this.eventEmitter.emit('pet.interaction', { type: 'addCoupon' as InteractionType });
     return coupon;
   }
 
+  /**
+   * Devuelve todos los cupones (los expirados ya
+   * han sido borrados automáticamente por Mongo).
+   */
   async getAllCoupons(): Promise<Coupon[]> {
     return this.couponModel.find().sort({ createdAt: -1 }).exec();
   }

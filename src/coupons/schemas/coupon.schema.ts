@@ -29,6 +29,16 @@ export class Coupon {
   /** Si es true, NO se elimina al canjear */
   @Prop({ default: false })
   reusable: boolean;
+
+  /**
+   * Fecha y hora límite: cuando llegue, Mongoose/TLL
+   * eliminará automáticamente el documento.
+   */
+  @Prop({ type: Date })
+  expirationDate?: Date;
 }
 
 export const CouponSchema = SchemaFactory.createForClass(Coupon);
+
+// Índice TTL: expira justo al llegar a expirationDate
+CouponSchema.index({ expirationDate: 1 }, { expireAfterSeconds: 0 });
