@@ -1,14 +1,25 @@
 // src/stats/stats.module.ts
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { ScheduleModule } from '@nestjs/schedule';
+
 import { StatsService } from './stats.service';
 import { StatsController } from './stats.controller';
 import { Stats, StatsSchema } from './schemas/stats.schema';
-import { ScheduleModule, SchedulerRegistry } from '@nestjs/schedule';
+
+import { Product, ProductSchema } from '../products/schemas/product.schema';
+import { Coupon, CouponSchema }  from '../coupons/schemas/coupon.schema';
+import { Movie, MovieSchema }    from '../movies/schemas/movie.schema';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: Stats.name, schema: StatsSchema }]),
+    // Para que StatsService pueda inyectar estos modelos:
+    MongooseModule.forFeature([
+      { name: Stats.name,    schema: StatsSchema },
+      { name: Product.name,  schema: ProductSchema },
+      { name: Coupon.name,   schema: CouponSchema },
+      { name: Movie.name,    schema: MovieSchema },
+    ]),
     ScheduleModule.forRoot(),
   ],
   providers: [StatsService],
