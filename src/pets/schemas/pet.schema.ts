@@ -1,5 +1,4 @@
 // src/pets/schemas/pet.schema.ts
-
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 import { InteractionType } from '../pets.service';
@@ -33,9 +32,20 @@ export class Pet {
   })
   lastInteractionType?: InteractionType;
 
-  // ← Nuevo campo para almacenar el mensaje bonito
   @Prop({ default: '' })
   lastMessage: string;
+
+  /** Estadísticas globales al momento de la última actualización */
+  @Prop({ type: Object, default: {} })
+  stats: Partial<{
+    totalProducts: number;
+    totalBought: number;
+    totalLiked: number;
+    totalCoupons: number;
+    totalRedeemedCoupons: number;
+    totalMovies: number;
+    totalWatched: number;
+  }>;
 }
 
 export const PetSchema = SchemaFactory.createForClass(Pet);

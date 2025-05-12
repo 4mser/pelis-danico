@@ -1,5 +1,4 @@
 // src/pets/pets.controller.ts
-
 import { Controller, Get, Post, Param } from '@nestjs/common';
 import { PetsService, InteractionType } from './pets.service';
 
@@ -7,13 +6,13 @@ import { PetsService, InteractionType } from './pets.service';
 export class PetsController {
   constructor(private petsService: PetsService) {}
 
-  /** No regeneramos mensaje aquí */
+  /** Obtiene el estado actual de Rabanito */
   @Get()
   getPet() {
     return this.petsService.getPet();
   }
 
-  /** Interacción real */
+  /** Ejecuta una interacción y actualiza a Rabanito */
   @Post('interact/:type')
   interact(@Param('type') type: InteractionType) {
     return this.petsService.handleInteraction(type);
