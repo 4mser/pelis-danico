@@ -11,6 +11,8 @@ import { ProductsModule } from './products/products.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
 import { PetsModule } from './pets/pets.module';
+import { AnalyticsModule } from './analytics/analytics.module';
+import { StatsModule } from './stats/stats.module';
 
 @Module({
   imports: [
@@ -22,6 +24,8 @@ import { PetsModule } from './pets/pets.module';
     MongooseModule.forRoot(process.env.MONGO_URI),
     MoviesModule,
     TmdbModule,
+    AnalyticsModule,
+    StatsModule,
     ProductsModule,
     PetsModule,
     CouponsModule

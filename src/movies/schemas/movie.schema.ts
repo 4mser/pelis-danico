@@ -1,25 +1,30 @@
-// src/movies/schemas/movie.schema.ts
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
-export type MovieDocument = Movie & Document;
+export type MovieDocument = Movie & Document & {
+  createdAt: Date;
+  updatedAt: Date;
+};
 
-@Schema()
+@Schema({ timestamps: true })
 export class Movie {
   @Prop({ required: true })
   title: string;
 
   @Prop({ required: true })
-  apiId: string; // ID de la película en la API externa
+  apiId: string;
 
-  @Prop({ required: true })
-  list: 'Barbara' | 'Nico' | 'Juntos';
+  @Prop({ required: true, enum: ['Barbara', 'Nico', 'Juntos'] })
+  list: string;
 
   @Prop({ default: false })
   watched: boolean;
 
-  @Prop() // Nuevo campo añadido
+  @Prop()
   poster?: string;
+
+  @Prop()
+  watchedAt?: Date;
 }
 
 export const MovieSchema = SchemaFactory.createForClass(Movie);
