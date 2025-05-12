@@ -16,13 +16,13 @@ import {
     @WebSocketServer()
     server: Server;
   
-    afterInit(server: Server) {
-      console.log('🐇 PetsGateway initialized');
+    afterInit() {
+      console.log('🐇 PetsGateway listo');
     }
   
-    /** Ahora acepta pet + mensaje */
-    broadcastPet(pet: Pet, message?: string) {
-      this.server.emit('pet_update', { pet, message });
+    /** Ahora sólo recibe el Pet completo */
+    broadcastPet(pet: Pet) {
+      this.server.emit('pet_update', pet);
     }
   }
   

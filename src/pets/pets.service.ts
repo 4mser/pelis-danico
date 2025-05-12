@@ -14,7 +14,7 @@ import { Pet, PetDocument }       from './schemas/pet.schema';
 import { PetsGateway }            from './pets.gateway';
 
 export type InteractionType =
-  | 'addMovie'   | 'markWatched' | 'deleteMovie'
+  | 'addMovie' | 'markWatched' | 'deleteMovie'
   | 'addProduct' | 'buyProduct'  | 'likeOne'
   | 'likeBoth'   | 'addCoupon'   | 'redeemCoupon';
 
@@ -34,12 +34,12 @@ export class PetsService implements OnModuleInit {
   }
 
   onModuleInit() {
-    const interval = setInterval(() => {
-      this.decay().catch(err => console.error('Decay error', err));
-    }, 1000 * 60 * 60);
+    // Decay cada hora
+    const interval = setInterval(() => this.decay().catch(console.error), 1000*60*60);
     this.schedulerRegistry.addInterval('petDecayJob', interval);
   }
 
+  /** Crea o devuelve la mascota sin regenerar mensaje */
   private async findOrCreate(): Promise<PetDocument> {
     let pet = await this.petModel.findOne().exec();
     if (!pet) {
@@ -47,13 +47,18 @@ export class PetsService implements OnModuleInit {
         name: 'Rabanito',
         lastInteractionAt: new Date(),
         lastInteractionType: null,
+        lastMessage: '',
       });
+      // Genera y guarda el mensaje inicial
       const msg = await this.generateMessage(pet);
-      this.petsGateway.broadcastPet(pet, msg);
+      pet.lastMessage = msg;
+      await pet.save();
+      this.petsGateway.broadcastPet(pet);
     }
     return pet;
   }
 
+  /** Deltas como antes */
   private getDeltas(type: InteractionType) {
     switch (type) {
       case 'addMovie':     return { happiness: 0,  energy: 0,  curiosity: +10 };
@@ -69,53 +74,59 @@ export class PetsService implements OnModuleInit {
     }
   }
 
+  /** Llama a OpenAI para crear un mensaje bonito */
   private async generateMessage(pet: PetDocument): Promise<string> {
-    const systemPrompt = `Eres Rabanito, un conejo virtual que habla en español y describe sus emociones basándose en métricas.`;
-    const userPrompt = `
-Estos son tus datos:
+    const sys = `Eres Rabanito, un conejo virtual que describe sus emociones en español.`;
+    const usr = `
+Estos son tus datos actuales:
 - Felicidad: ${pet.happiness}%
 - Energía: ${pet.energy}%
 - Curiosidad: ${pet.curiosity}%
 - Última interacción: ${pet.lastInteractionType ?? 'ninguna'}
 
-Genera un mensaje breve y amistoso en español.
+Haz un mensaje breve y amistoso en español.
     `.trim();
 
     const res = await this.openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user',   content: userPrompt },
+        { role: 'system', content: sys },
+        { role: 'user',   content: usr },
       ],
       temperature: 0.8,
       max_tokens: 60,
     });
-
-    return res.choices[0]?.message?.content.trim() ?? '';
+    return res.choices[0]!.message!.content.trim();
   }
 
+  /** Maneja interacciones reales */
   async handleInteraction(type: InteractionType): Promise<PetDocument> {
     const pet = await this.findOrCreate();
     const delta = this.getDeltas(type);
 
-    pet.happiness          = clamp(pet.happiness  + delta.happiness,  0, 100);
-    pet.energy             = clamp(pet.energy     + delta.energy,     0, 100);
-    pet.curiosity          = clamp(pet.curiosity  + delta.curiosity,  0, 100);
+    pet.happiness          = clamp(pet.happiness  + delta.happiness,  0,100);
+    pet.energy             = clamp(pet.energy     + delta.energy,     0,100);
+    pet.curiosity          = clamp(pet.curiosity  + delta.curiosity,  0,100);
     pet.lastInteractionAt   = new Date();
     pet.lastInteractionType = type;
 
-    const saved = await pet.save();
-    const msg   = await this.generateMessage(saved);
-    this.petsGateway.broadcastPet(saved, msg);
-    return saved;
+    await pet.save();
+
+    // Genera **solo ahora** el mensaje y guarda
+    const msg = await this.generateMessage(pet);
+    pet.lastMessage = msg;
+    await pet.save();
+
+    this.petsGateway.broadcastPet(pet);
+    return pet;
   }
 
-  async getPet(): Promise<{ pet: PetDocument; message: string }> {
-    const pet = await this.findOrCreate();
-    const message = await this.generateMessage(pet);
-    return { pet, message };
+  /** Devuelve el estado actual SIN regenerar mensaje */
+  async getPet(): Promise<PetDocument> {
+    return this.findOrCreate();
   }
 
+  /** Decadencia cada hora */
   private async decay(): Promise<void> {
     const pet = await this.findOrCreate();
     const hours = differenceInHours(new Date(), pet.lastInteractionAt);
@@ -130,12 +141,18 @@ Genera un mensaje breve y amistoso en español.
       return;
     }
 
-    pet.happiness = clamp(pet.happiness,  0, 100);
-    pet.energy    = clamp(pet.energy,     0, 100);
-    pet.curiosity = clamp(pet.curiosity,  0, 100);
+    pet.happiness = clamp(pet.happiness,  0,100);
+    pet.energy    = clamp(pet.energy,     0,100);
+    pet.curiosity = clamp(pet.curiosity,  0,100);
+    pet.lastInteractionAt = new Date();
 
-    const saved = await pet.save();
-    const msg   = await this.generateMessage(saved);
-    this.petsGateway.broadcastPet(saved, msg);
+    await pet.save();
+
+    // Genera y guarda mensaje post-decaída
+    const msg = await this.generateMessage(pet);
+    pet.lastMessage = msg;
+    await pet.save();
+
+    this.petsGateway.broadcastPet(pet);
   }
 }
