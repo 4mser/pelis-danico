@@ -1,3 +1,5 @@
+// src/pets/schemas/pet.schema.ts
+
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 import { InteractionType } from '../pets.service';
@@ -23,30 +25,17 @@ export class Pet {
 
   @Prop({
     enum: [
-      'addMovie', 'markWatched', 'deleteMovie',
-      'addProduct', 'buyProduct', 'likeOne',
-      'likeBoth', 'addCoupon', 'redeemCoupon'
+      'addMovie','markWatched','deleteMovie',
+      'addProduct','buyProduct','likeOne',
+      'likeBoth','addCoupon','redeemCoupon',
     ],
-    default: null
+    default: null,
   })
   lastInteractionType?: InteractionType;
 
+  // ← Nuevo campo para almacenar el mensaje bonito
   @Prop({ default: '' })
   lastMessage: string;
-
-  @Prop({ type: Object, default: {} })
-  preferences: {
-    movieGenres?: Record<string, number>;
-    couponCategories?: Record<string, number>;
-    productTypes?: Record<string, number>;
-  };
-
-  @Prop({ type: [Object], default: [] })
-  interactionHistory: Array<{
-    type: InteractionType;
-    timestamp: Date;
-    details?: any;
-  }>;
 }
 
 export const PetSchema = SchemaFactory.createForClass(Pet);
