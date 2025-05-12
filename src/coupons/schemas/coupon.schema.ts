@@ -1,5 +1,9 @@
+// src/coupons/schemas/coupon.schema.ts
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
+
+export const CouponOwners = ['Nico', 'Barbara'] as const;
+export type CouponOwner = typeof CouponOwners[number];
 
 export type CouponDocument = Coupon & Document;
 
@@ -10,6 +14,13 @@ export class Coupon {
 
   @Prop({ required: true })
   description: string;
+
+  @Prop({ 
+    required: true, 
+    enum: CouponOwners, 
+    default: 'Barbara' 
+  })
+  owner: CouponOwner;
 
   @Prop({ default: false })
   redeemed: boolean;
