@@ -1,17 +1,19 @@
 // src/pets/pets.service.ts
-
 import { Injectable, OnModuleInit } from '@nestjs/common';
-import { InjectModel }            from '@nestjs/mongoose';
-import { Model }                  from 'mongoose';
-import { SchedulerRegistry }      from '@nestjs/schedule';
-import { differenceInHours }      from 'date-fns';
-import { clamp }                  from 'lodash';
-import { ConfigService }          from '@nestjs/config';
+import { InjectModel }      from '@nestjs/mongoose';
+import { Model }            from 'mongoose';
+import { SchedulerRegistry }from '@nestjs/schedule';
+import { differenceInHours }from 'date-fns';
+import { clamp }            from 'lodash';
+import { ConfigService }    from '@nestjs/config';
 
 import OpenAI from 'openai';
 
 import { Pet, PetDocument }       from './schemas/pet.schema';
 import { PetsGateway }            from './pets.gateway';
+import { Product, ProductDocument } from '../products/schemas/product.schema';
+import { Coupon, CouponDocument }   from '../coupons/schemas/coupon.schema';
+import { Movie, MovieDocument }     from '../movies/schemas/movie.schema';
 
 export type InteractionType =
   | 'addMovie' | 'markWatched' | 'deleteMovie'
@@ -24,6 +26,9 @@ export class PetsService implements OnModuleInit {
 
   constructor(
     @InjectModel(Pet.name) private petModel: Model<PetDocument>,
+    @InjectModel(Product.name) private productModel: Model<ProductDocument>,
+    @InjectModel(Coupon.name)  private couponModel: Model<CouponDocument>,
+    @InjectModel(Movie.name)   private movieModel: Model<MovieDocument>,
     private schedulerRegistry: SchedulerRegistry,
     private petsGateway: PetsGateway,
     private configService: ConfigService,
@@ -39,7 +44,6 @@ export class PetsService implements OnModuleInit {
     this.schedulerRegistry.addInterval('petDecayJob', interval);
   }
 
-  /** Crea o devuelve la mascota sin regenerar mensaje */
   private async findOrCreate(): Promise<PetDocument> {
     let pet = await this.petModel.findOne().exec();
     if (!pet) {
@@ -49,7 +53,6 @@ export class PetsService implements OnModuleInit {
         lastInteractionType: null,
         lastMessage: '',
       });
-      // Genera y guarda el mensaje inicial
       const msg = await this.generateMessage(pet);
       pet.lastMessage = msg;
       await pet.save();
@@ -58,61 +61,120 @@ export class PetsService implements OnModuleInit {
     return pet;
   }
 
-  /** Deltas como antes */
   private getDeltas(type: InteractionType) {
     switch (type) {
-      case 'addMovie':     return { happiness: 0,  energy: 0,  curiosity: +10 };
-      case 'markWatched':  return { happiness: +15, energy: 0,  curiosity: 0   };
+      case 'addMovie':     return { happiness: 0,  energy: 0,  curiosity: +5 };
+      case 'markWatched':  return { happiness: +5, energy: 0,  curiosity: 0   };
       case 'deleteMovie':  return { happiness: 0,  energy: 0,  curiosity: -5  };
       case 'addProduct':   return { happiness: 0,  energy: 0,  curiosity: +8  };
-      case 'buyProduct':   return { happiness: +12, energy: 0,  curiosity: 0   };
+      case 'buyProduct':   return { happiness: +5, energy: -5,  curiosity: 0   };
       case 'likeOne':      return { happiness: 0,  energy: +5, curiosity: 0   };
-      case 'likeBoth':     return { happiness: +20, energy: 0,  curiosity: 0   };
+      case 'likeBoth':     return { happiness: +10, energy: 0,  curiosity: 0   };
       case 'addCoupon':    return { happiness: 0,  energy: 0,  curiosity: +7  };
-      case 'redeemCoupon': return { happiness: +18, energy: 0,  curiosity: 0   };
+      case 'redeemCoupon': return { happiness: +10, energy: -5,  curiosity: 0   };
       default:             return { happiness: 0,  energy: 0,  curiosity: 0   };
     }
   }
 
-  /** Llama a OpenAI para crear un mensaje bonito */
-  private async generateMessage(pet: PetDocument): Promise<string> {
-    const sys = `Eres Rabanito, un conejo virtual que describe sus emociones en español.`;
+  /** Extrae contexto de DB según el tipo de interacción */
+  private async fetchContext(type: InteractionType): Promise<string> {
+    switch (type) {
+      case 'likeBoth': {
+        const p = await this.productModel
+          .findOne({ likeBoth: true })
+          .sort({ updatedAt: -1 }).exec();
+        return p ? `que a ambos les gustara el producto "${p.name}"` : '';
+      }
+      case 'likeOne': {
+        const p = await this.productModel
+          .findOne({ $or: [{ likeNico: true }, { likeBarbara: true }]})
+          .sort({ updatedAt: -1 }).exec();
+        if (!p) return '';
+        const quien = p.likeNico && !p.likeBarbara
+          ? 'Nico' : p.likeBarbara && !p.likeNico
+          ? 'Barbara' : 'alguien';
+        return `${quien} le dio like al producto "${p.name}"`;
+      }
+      case 'buyProduct': {
+        const p = await this.productModel
+          .findOne({ bought: true })
+          .sort({ updatedAt: -1 }).exec();
+        return p ? `que compraron el producto "${p.name}"` : '';
+      }
+      case 'addCoupon': {
+        const c = await this.couponModel
+          .findOne().sort({ createdAt: -1 }).exec();
+        return c ? `que se añadió el cupón "${c.title}"` : '';
+      }
+      case 'redeemCoupon': {
+        const c = await this.couponModel
+          .findOne({ redeemed: true })
+          .sort({ updatedAt: -1 }).exec();
+        return c ? `que canjearon el cupón "${c.title}"` : '';
+      }
+      case 'addMovie': {
+        const m = await this.movieModel
+          .findOne().sort({ createdAt: -1 }).exec();
+        return m ? `que agregaron la película "${m.title}"` : '';
+      }
+      case 'markWatched': {
+        const m = await this.movieModel
+          .findOne({ watched: true })
+          .sort({ updatedAt: -1 }).exec();
+        return m ? `que vieron la película "${m.title}"` : '';
+      }
+      default:
+        return '';
+    }
+  }
+
+  /** Genera mensaje enriquecido con contexto */
+  /** Genera un mensaje juguetón y brevísimo */
+private async generateMessage(pet: PetDocument): Promise<string> {
+    // Extraemos el contexto puntual (producto, cupón o película)
+    const ctx = pet.lastInteractionType
+      ? await this.fetchContext(pet.lastInteractionType)
+      : '';
+  
+    // System prompt que fuerza un tono corto y divertido
+    const sys = `Eres un narrador juguetón que habla como una mascota virtual; tus mensajes son muy cortos, en español, y suenan espontáneos.`;
+  
+    // Solo incluimos los datos esenciales y el contexto
     const usr = `
-Estos son tus datos actuales:
-- Felicidad: ${pet.happiness}%
-- Energía: ${pet.energy}%
-- Curiosidad: ${pet.curiosity}%
-- Última interacción: ${pet.lastInteractionType ?? 'ninguna'}
-
-Haz un mensaje breve y amistoso en español.
+  Felicidad: ${pet.happiness}%  
+  Energía: ${pet.energy}%  
+  Curiosidad: ${pet.curiosity}%  
+  ${ctx ? `Interacción reciente: ${ctx}` : ''}
+  Por favor, solo una frase divertida.
     `.trim();
-
+  
     const res = await this.openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: sys },
         { role: 'user',   content: usr },
       ],
-      temperature: 0.8,
-      max_tokens: 60,
+      temperature: 1.0,
+      max_tokens: 30,
     });
+  
     return res.choices[0]!.message!.content.trim();
   }
+  
 
   /** Maneja interacciones reales */
   async handleInteraction(type: InteractionType): Promise<PetDocument> {
     const pet = await this.findOrCreate();
     const delta = this.getDeltas(type);
 
-    pet.happiness          = clamp(pet.happiness  + delta.happiness,  0,100);
-    pet.energy             = clamp(pet.energy     + delta.energy,     0,100);
-    pet.curiosity          = clamp(pet.curiosity  + delta.curiosity,  0,100);
-    pet.lastInteractionAt   = new Date();
-    pet.lastInteractionType = type;
+    pet.happiness          = clamp(pet.happiness  + delta.happiness,  0, 100);
+    pet.energy             = clamp(pet.energy     + delta.energy,     0, 100);
+    pet.curiosity          = clamp(pet.curiosity  + delta.curiosity,  0, 100);
+    pet.lastInteractionAt  = new Date();
+    pet.lastInteractionType= type;
 
     await pet.save();
 
-    // Genera **solo ahora** el mensaje y guarda
     const msg = await this.generateMessage(pet);
     pet.lastMessage = msg;
     await pet.save();
@@ -131,28 +193,20 @@ Haz un mensaje breve y amistoso en español.
     const pet = await this.findOrCreate();
     const hours = differenceInHours(new Date(), pet.lastInteractionAt);
 
-    if (hours >= 12) {
-      pet.happiness -= 20; pet.energy -= 10; pet.curiosity -= 15;
-    } else if (hours >= 6) {
-      pet.happiness -= 10; pet.energy -= 5;  pet.curiosity -= 7;
-    } else if (hours >= 3) {
-      pet.happiness -= 5;  pet.energy -= 3;
-    } else {
-      return;
-    }
+    if      (hours >= 12) { pet.happiness -= 20; pet.energy -= 10; pet.curiosity -= 15; }
+    else if (hours >= 6)  { pet.happiness -= 10; pet.energy -= 5;  pet.curiosity -= 7; }
+    else if (hours >= 3)  { pet.happiness -= 5;  pet.energy -= 3;  /* curiosidad sin cambio */ }
+    else return;
 
-    pet.happiness = clamp(pet.happiness,  0,100);
-    pet.energy    = clamp(pet.energy,     0,100);
-    pet.curiosity = clamp(pet.curiosity,  0,100);
-    pet.lastInteractionAt = new Date();
+    pet.happiness          = clamp(pet.happiness,  0, 100);
+    pet.energy             = clamp(pet.energy,     0, 100);
+    pet.curiosity          = clamp(pet.curiosity,  0, 100);
+    pet.lastInteractionAt  = new Date();
 
     await pet.save();
-
-    // Genera y guarda mensaje post-decaída
     const msg = await this.generateMessage(pet);
     pet.lastMessage = msg;
     await pet.save();
-
     this.petsGateway.broadcastPet(pet);
   }
 }
