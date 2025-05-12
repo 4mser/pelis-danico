@@ -1,11 +1,17 @@
+// src/pets/pets.service.ts
+
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectModel }            from '@nestjs/mongoose';
 import { Model }                  from 'mongoose';
 import { SchedulerRegistry }      from '@nestjs/schedule';
 import { differenceInHours }      from 'date-fns';
 import { clamp }                  from 'lodash';
+import { ConfigService }          from '@nestjs/config';
+
+import OpenAI from 'openai';
 
 import { Pet, PetDocument }       from './schemas/pet.schema';
+import { PetsGateway }            from './pets.gateway';
 
 export type InteractionType =
   | 'addMovie'   | 'markWatched' | 'deleteMovie'
@@ -14,14 +20,22 @@ export type InteractionType =
 
 @Injectable()
 export class PetsService implements OnModuleInit {
+  private openai: OpenAI;
+
   constructor(
     @InjectModel(Pet.name) private petModel: Model<PetDocument>,
     private schedulerRegistry: SchedulerRegistry,
-  ) {}
+    private petsGateway: PetsGateway,
+    private configService: ConfigService,
+  ) {
+    this.openai = new OpenAI({
+      apiKey: this.configService.get<string>('OPENAI_API_KEY'),
+    });
+  }
 
   onModuleInit() {
     const interval = setInterval(() => {
-      this.decay().catch(console.error);
+      this.decay().catch(err => console.error('Decay error', err));
     }, 1000 * 60 * 60);
     this.schedulerRegistry.addInterval('petDecayJob', interval);
   }
@@ -34,6 +48,8 @@ export class PetsService implements OnModuleInit {
         lastInteractionAt: new Date(),
         lastInteractionType: null,
       });
+      const msg = await this.generateMessage(pet);
+      this.petsGateway.broadcastPet(pet, msg);
     }
     return pet;
   }
@@ -53,22 +69,51 @@ export class PetsService implements OnModuleInit {
     }
   }
 
-  async handleInteraction(type: InteractionType) {
+  private async generateMessage(pet: PetDocument): Promise<string> {
+    const systemPrompt = `Eres Rabanito, un conejo virtual que habla en español y describe sus emociones basándose en métricas.`;
+    const userPrompt = `
+Estos son tus datos:
+- Felicidad: ${pet.happiness}%
+- Energía: ${pet.energy}%
+- Curiosidad: ${pet.curiosity}%
+- Última interacción: ${pet.lastInteractionType ?? 'ninguna'}
+
+Genera un mensaje breve y amistoso en español.
+    `.trim();
+
+    const res = await this.openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user',   content: userPrompt },
+      ],
+      temperature: 0.8,
+      max_tokens: 60,
+    });
+
+    return res.choices[0]?.message?.content.trim() ?? '';
+  }
+
+  async handleInteraction(type: InteractionType): Promise<PetDocument> {
     const pet = await this.findOrCreate();
     const delta = this.getDeltas(type);
 
-    pet.happiness         = clamp(pet.happiness  + delta.happiness,  0, 100);
-    pet.energy            = clamp(pet.energy     + delta.energy,     0, 100);
-    pet.curiosity         = clamp(pet.curiosity  + delta.curiosity,  0, 100);
-
+    pet.happiness          = clamp(pet.happiness  + delta.happiness,  0, 100);
+    pet.energy             = clamp(pet.energy     + delta.energy,     0, 100);
+    pet.curiosity          = clamp(pet.curiosity  + delta.curiosity,  0, 100);
     pet.lastInteractionAt   = new Date();
-    pet.lastInteractionType = type;          // ← guardamos el tipo
+    pet.lastInteractionType = type;
 
-    return pet.save();
+    const saved = await pet.save();
+    const msg   = await this.generateMessage(saved);
+    this.petsGateway.broadcastPet(saved, msg);
+    return saved;
   }
 
-  async getPet() {
-    return this.findOrCreate();
+  async getPet(): Promise<{ pet: PetDocument; message: string }> {
+    const pet = await this.findOrCreate();
+    const message = await this.generateMessage(pet);
+    return { pet, message };
   }
 
   private async decay(): Promise<void> {
@@ -76,24 +121,21 @@ export class PetsService implements OnModuleInit {
     const hours = differenceInHours(new Date(), pet.lastInteractionAt);
 
     if (hours >= 12) {
-      pet.happiness -= 20;
-      pet.energy    -= 10;
-      pet.curiosity -= 15;
+      pet.happiness -= 20; pet.energy -= 10; pet.curiosity -= 15;
     } else if (hours >= 6) {
-      pet.happiness -= 10;
-      pet.energy    -= 5;
-      pet.curiosity -= 7;
+      pet.happiness -= 10; pet.energy -= 5;  pet.curiosity -= 7;
     } else if (hours >= 3) {
-      pet.happiness -= 5;
-      pet.energy    -= 3;
+      pet.happiness -= 5;  pet.energy -= 3;
     } else {
       return;
     }
 
-    pet.happiness         = clamp(pet.happiness,  0, 100);
-    pet.energy            = clamp(pet.energy,     0, 100);
-    pet.curiosity         = clamp(pet.curiosity,  0, 100);
+    pet.happiness = clamp(pet.happiness,  0, 100);
+    pet.energy    = clamp(pet.energy,     0, 100);
+    pet.curiosity = clamp(pet.curiosity,  0, 100);
 
-    await pet.save();
+    const saved = await pet.save();
+    const msg   = await this.generateMessage(saved);
+    this.petsGateway.broadcastPet(saved, msg);
   }
 }
