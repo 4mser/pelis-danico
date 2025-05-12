@@ -1,11 +1,13 @@
 // src/pets/pets.service.ts
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { Interval } from '@nestjs/schedule';
-import { differenceInHours } from 'date-fns';
-import { clamp } from 'lodash';
-import { Pet, PetDocument } from './schemas/pet.schema';
+
+import { Injectable, OnModuleInit } from '@nestjs/common';
+import { InjectModel }            from '@nestjs/mongoose';
+import { Model }                  from 'mongoose';
+import { SchedulerRegistry }      from '@nestjs/schedule';
+import { differenceInHours }      from 'date-fns';
+import { clamp }                  from 'lodash';
+
+import { Pet, PetDocument }       from './schemas/pet.schema';
 
 export type InteractionType =
   | 'addMovie'
@@ -19,12 +21,22 @@ export type InteractionType =
   | 'redeemCoupon';
 
 @Injectable()
-export class PetsService {
+export class PetsService implements OnModuleInit {
   constructor(
     @InjectModel(Pet.name) private petModel: Model<PetDocument>,
+    private schedulerRegistry: SchedulerRegistry,
   ) {}
 
-  /** Busca la mascota; si no existe, la crea */
+  /** Al arrancar, programa el job de decadencia cada hora */
+  onModuleInit() {
+    const interval = setInterval(() => {
+      this.decay().catch(err => console.error('Error in decay job', err));
+    }, 1000 * 60 * 60);
+
+    this.schedulerRegistry.addInterval('petDecayJob', interval);
+  }
+
+  /** Encuentra o crea a Bunny */
   private async findOrCreate(): Promise<PetDocument> {
     let pet = await this.petModel.findOne().exec();
     if (!pet) {
@@ -36,7 +48,7 @@ export class PetsService {
     return pet;
   }
 
-  /** Map de tipos de interacción a deltas */
+  /** Mapeo de tipos de interacción a cambios en stats */
   private getDeltas(type: InteractionType) {
     switch (type) {
       case 'addMovie':     return { happiness: 0,  energy: 0,  curiosity: +10 };
@@ -52,27 +64,26 @@ export class PetsService {
     }
   }
 
-  /** Aplica un tipo de interacción a la mascota por defecto */
+  /** Maneja una interacción y actualiza stats */
   async handleInteraction(type: InteractionType) {
     const pet = await this.findOrCreate();
     const delta = this.getDeltas(type);
 
-    pet.happiness  = clamp(pet.happiness  + delta.happiness,  0, 100);
-    pet.energy     = clamp(pet.energy     + delta.energy,     0, 100);
-    pet.curiosity  = clamp(pet.curiosity  + delta.curiosity,  0, 100);
+    pet.happiness         = clamp(pet.happiness  + delta.happiness,  0, 100);
+    pet.energy            = clamp(pet.energy     + delta.energy,     0, 100);
+    pet.curiosity         = clamp(pet.curiosity  + delta.curiosity,  0, 100);
     pet.lastInteractionAt = new Date();
 
     return pet.save();
   }
 
-  /** Devuelve el estado actual (crea la mascota si no existe) */
+  /** Devuelve el estado actual de Bunny */
   async getPet() {
     return this.findOrCreate();
   }
 
-  /** Job de decadencia automática cada hora */
-  @Interval(1000 * 60 * 60)
-  private async decayJob() {
+  /** Lógica de decadencia (llamado cada hora por setInterval) */
+  private async decay(): Promise<void> {
     const pet = await this.findOrCreate();
     const hours = differenceInHours(new Date(), pet.lastInteractionAt);
 
@@ -91,9 +102,9 @@ export class PetsService {
       return;
     }
 
-    pet.happiness = clamp(pet.happiness, 0, 100);
-    pet.energy    = clamp(pet.energy,    0, 100);
-    pet.curiosity = clamp(pet.curiosity, 0, 100);
+    pet.happiness = clamp(pet.happiness,  0, 100);
+    pet.energy    = clamp(pet.energy,     0, 100);
+    pet.curiosity = clamp(pet.curiosity,  0, 100);
 
     await pet.save();
   }
