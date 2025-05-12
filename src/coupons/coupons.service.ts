@@ -1,4 +1,5 @@
 // src/coupons/coupons.service.ts
+
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -19,7 +20,6 @@ export class CouponsService {
     private eventEmitter: EventEmitter2,
   ) {}
 
-  /** Crea y emite evento */
   async addCoupon(
     title: string,
     description: string,
@@ -29,19 +29,14 @@ export class CouponsService {
       throw new NotFoundException(`Owner inválido: ${owner}`);
     }
     const coupon = await new this.couponModel({ title, description, owner }).save();
-    this.eventEmitter.emit(
-      'pet.interaction',
-      { type: 'addCoupon' as InteractionType },
-    );
+    this.eventEmitter.emit('pet.interaction', { type: 'addCoupon' as InteractionType });
     return coupon;
   }
 
-  /** Todos los cupones */
   async getAllCoupons(): Promise<Coupon[]> {
     return this.couponModel.find().sort({ createdAt: -1 }).exec();
   }
 
-  /** Solo de un owner */
   async getCouponsByOwner(owner: CouponOwner): Promise<Coupon[]> {
     return this.couponModel
       .find({ owner })
@@ -55,19 +50,36 @@ export class CouponsService {
     return coupon;
   }
 
-  /** Marca como canjeado y emite evento */
-  async redeemCoupon(id: string, redeemed: boolean): Promise<Coupon> {
-    const updated = await this.couponModel
-      .findByIdAndUpdate(id, { redeemed }, { new: true })
-      .exec();
-    if (!updated) throw new NotFoundException('Coupon not found');
+  /**
+   * Si `redeemed = true`:
+   *   - reusable ⇒ marca redeemed y devuelve el coupon
+   *   - no reusable ⇒ elimina y devuelve `{ deleted: true }`
+   * Si `redeemed = false`: (solo tiene sentido en reusable) desmarca y devuelve el coupon
+   */
+  async redeemCoupon(
+    id: string,
+    redeemed: boolean,
+  ): Promise<Coupon | { deleted: true }> {
+    const coupon = await this.couponModel.findById(id).exec();
+    if (!coupon) throw new NotFoundException('Coupon not found');
+
     if (redeemed) {
-      this.eventEmitter.emit(
-        'pet.interaction',
-        { type: 'redeemCoupon' as InteractionType },
-      );
+      if (coupon.reusable) {
+        coupon.redeemed = true;
+        const updated = await coupon.save();
+        this.eventEmitter.emit('pet.interaction', { type: 'redeemCoupon' as InteractionType });
+        return updated;
+      } else {
+        await this.couponModel.findByIdAndDelete(id).exec();
+        this.eventEmitter.emit('pet.interaction', { type: 'redeemCoupon' as InteractionType });
+        return { deleted: true };
+      }
+    } else {
+      // descanjear (solo reusable)
+      coupon.redeemed = false;
+      const updated = await coupon.save();
+      return updated;
     }
-    return updated;
   }
 
   async deleteCoupon(id: string): Promise<{ deleted: boolean }> {

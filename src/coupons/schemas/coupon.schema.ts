@@ -1,4 +1,5 @@
 // src/coupons/schemas/coupon.schema.ts
+
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
@@ -24,6 +25,10 @@ export class Coupon {
 
   @Prop({ default: false })
   redeemed: boolean;
+
+  /** NUEVO: si es true, no se elimina al canjear */
+  @Prop({ default: false })
+  reusable: boolean;
 }
 
 export const CouponSchema = SchemaFactory.createForClass(Coupon);

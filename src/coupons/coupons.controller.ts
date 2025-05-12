@@ -1,4 +1,5 @@
 // src/coupons/coupons.controller.ts
+
 import {
   Controller,
   Get,
@@ -16,7 +17,6 @@ import { Coupon, CouponOwners } from './schemas/coupon.schema';
 export class CouponsController {
   constructor(private readonly couponsService: CouponsService) {}
 
-  /** Crea un cupón para Nico o Barbara */
   @Post()
   async addCoupon(
     @Body() body: {
@@ -32,13 +32,11 @@ export class CouponsController {
     );
   }
 
-  /** Lista todos o filtra por owner (p.ej. ?owner=Nico) */
   @Get()
   async getAll(@Query('owner') owner?: Coupon['owner']): Promise<Coupon[]> {
-    if (owner) {
-      return this.couponsService.getCouponsByOwner(owner);
-    }
-    return this.couponsService.getAllCoupons();
+    return owner
+      ? this.couponsService.getCouponsByOwner(owner)
+      : this.couponsService.getAllCoupons();
   }
 
   @Get(':id')
@@ -50,7 +48,7 @@ export class CouponsController {
   async redeem(
     @Param('id') id: string,
     @Body() body: { redeemed: boolean },
-  ): Promise<Coupon> {
+  ): Promise<Coupon | { deleted: true }> {
     return this.couponsService.redeemCoupon(id, body.redeemed);
   }
 
