@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
+import { InteractionType } from '../pets.service';
 
 export type PetDocument = Pet & Document;
 
@@ -19,6 +20,10 @@ export class Pet {
 
   @Prop({ default: () => new Date() })
   lastInteractionAt: Date;
+
+  // ← Nuevo campo:
+  @Prop({ enum: ['addMovie','markWatched','deleteMovie','addProduct','buyProduct','likeOne','likeBoth','addCoupon','redeemCoupon'], default: null })
+  lastInteractionType?: InteractionType;
 }
 
 export const PetSchema = SchemaFactory.createForClass(Pet);
