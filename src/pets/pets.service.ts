@@ -137,7 +137,7 @@ private async generateMessage(pet: PetDocument): Promise<string> {
       : '';
   
     // System prompt que fuerza un tono corto y divertido
-    const sys = `Eres un narrador juguetón que habla como una mascota virtual; tus mensajes son muy cortos, en español, y suenan espontáneos.`;
+    const sys = `Eres un narrador un conejo juguetón que habla como una mascota virtual; tus mensajes son muy cortos, en español, y suenan espontáneos.`;
   
     // Solo incluimos los datos esenciales y el contexto
     const usr = `
