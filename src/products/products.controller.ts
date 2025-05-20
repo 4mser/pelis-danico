@@ -1,4 +1,5 @@
 // src/products/products.controller.ts
+
 import {
   Controller,
   Get,
@@ -10,43 +11,49 @@ import {
   UploadedFile,
   UseInterceptors,
   Logger,
-} from '@nestjs/common'
-import { FileInterceptor } from '@nestjs/platform-express'
-import { Express } from 'express'
-import * as multer from 'multer'
-import { ProductsService } from './products.service'
-import { CreateProductDto } from './dto/create-product.dto'
-import { UpdateProductDto } from './dto/update-product.dto'
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import * as multer from 'multer';
+import { ProductsService } from './products.service';
+import { CreateProductDto } from './dto/create-product.dto';
+import { UpdateProductDto } from './dto/update-product.dto';
 
 @Controller('products')
 export class ProductsController {
-  private readonly logger = new Logger(ProductsController.name)
+  private readonly logger = new Logger(ProductsController.name);
 
   constructor(private readonly productsService: ProductsService) {}
+
+  @Get()
+  async findAll() {
+    this.logger.log('GET /products');
+    return this.productsService.findAll();
+  }
+
+  @Get(':id')
+  async findOne(@Param('id') id: string) {
+    this.logger.log(`GET /products/${id}`);
+    return this.productsService.findOne(id);
+  }
 
   @Post()
   @UseInterceptors(
     FileInterceptor('imageFile', {
       storage: multer.memoryStorage(),
-      limits: { fileSize: 5 * 1024 * 1024 },
+      limits: { fileSize: 5 * 1024 * 1024 }, // 5MB máximo
     }),
   )
   async create(
     @Body() createDto: CreateProductDto,
     @UploadedFile() imageFile?: Express.Multer.File,
   ) {
-    this.logger.log(`POST /products - body: ${JSON.stringify(createDto)}`)
+    this.logger.log(`POST /products – payload: ${JSON.stringify(createDto)}`);
     if (imageFile) {
-      this.logger.log(`POST /products - received file: ${imageFile.originalname} (${imageFile.size} bytes)`)
+      this.logger.log(
+        `POST /products – received file: ${imageFile.originalname} (${imageFile.size} bytes)`,
+      );
     }
-    try {
-      const product = await this.productsService.create(createDto, imageFile)
-      this.logger.log(`Product created: ${product._id}`)
-      return product
-    } catch (err) {
-      this.logger.error('Error in ProductsController.create()', err.stack)
-      throw err
-    }
+    return this.productsService.create(createDto, imageFile);
   }
 
   @Patch(':id')
@@ -61,19 +68,20 @@ export class ProductsController {
     @Body() updateDto: UpdateProductDto,
     @UploadedFile() imageFile?: Express.Multer.File,
   ) {
-    this.logger.log(`PATCH /products/${id} - body: ${JSON.stringify(updateDto)}`)
+    this.logger.log(
+      `PATCH /products/${id} – payload: ${JSON.stringify(updateDto)}`,
+    );
     if (imageFile) {
-      this.logger.log(`PATCH /products/${id} - received file: ${imageFile.originalname}`)
+      this.logger.log(
+        `PATCH /products/${id} – received file: ${imageFile.originalname}`,
+      );
     }
-    try {
-      const updated = await this.productsService.update(id, updateDto, imageFile)
-      this.logger.log(`Product updated: ${updated._id}`)
-      return updated
-    } catch (err) {
-      this.logger.error(`Error in ProductsController.update(${id})`, err.stack)
-      throw err
-    }
+    return this.productsService.update(id, updateDto, imageFile);
   }
 
-  // el resto queda igual, pero puedes añadir logs parecidos en remove()
+  @Delete(':id')
+  async remove(@Param('id') id: string) {
+    this.logger.log(`DELETE /products/${id}`);
+    return this.productsService.remove(id);
+  }
 }
