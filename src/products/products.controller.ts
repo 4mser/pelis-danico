@@ -1,3 +1,4 @@
+// src/products/products.controller.ts
 import {
   Controller,
   Get,
@@ -8,48 +9,59 @@ import {
   Param,
   UploadedFile,
   UseInterceptors,
-} from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { Express } from 'express';
-import { ProductsService } from './products.service';
-import { CreateProductDto } from './dto/create-product.dto';
-import { UpdateProductDto } from './dto/update-product.dto';
+} from '@nestjs/common'
+import { FileInterceptor } from '@nestjs/platform-express'
+import { Express } from 'express'
+import * as multer from 'multer'
+import { ProductsService } from './products.service'
+import { CreateProductDto } from './dto/create-product.dto'
+import { UpdateProductDto } from './dto/update-product.dto'
 
 @Controller('products')
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
   @Post()
-  @UseInterceptors(FileInterceptor('imageFile'))
+  @UseInterceptors(
+    FileInterceptor('imageFile', {
+      storage: multer.memoryStorage(),
+      limits: { fileSize: 5 * 1024 * 1024 }, // opcional: límite 5MB
+    }),
+  )
   async create(
     @Body() createDto: CreateProductDto,
     @UploadedFile() imageFile?: Express.Multer.File,
   ) {
-    return this.productsService.create(createDto, imageFile);
+    return this.productsService.create(createDto, imageFile)
   }
 
   @Get()
   async findAll() {
-    return this.productsService.findAll();
+    return this.productsService.findAll()
   }
 
   @Get(':id')
   async findOne(@Param('id') id: string) {
-    return this.productsService.findOne(id);
+    return this.productsService.findOne(id)
   }
 
   @Patch(':id')
-  @UseInterceptors(FileInterceptor('imageFile'))
+  @UseInterceptors(
+    FileInterceptor('imageFile', {
+      storage: multer.memoryStorage(),
+      limits: { fileSize: 5 * 1024 * 1024 },
+    }),
+  )
   async update(
     @Param('id') id: string,
     @Body() updateDto: UpdateProductDto,
     @UploadedFile() imageFile?: Express.Multer.File,
   ) {
-    return this.productsService.update(id, updateDto, imageFile);
+    return this.productsService.update(id, updateDto, imageFile)
   }
 
   @Delete(':id')
   async remove(@Param('id') id: string) {
-    return this.productsService.remove(id);
+    return this.productsService.remove(id)
   }
 }
