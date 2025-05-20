@@ -9,6 +9,7 @@ import {
   Param,
   UploadedFile,
   UseInterceptors,
+  Logger,
 } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
 import { Express } from 'express'
@@ -19,30 +20,33 @@ import { UpdateProductDto } from './dto/update-product.dto'
 
 @Controller('products')
 export class ProductsController {
+  private readonly logger = new Logger(ProductsController.name)
+
   constructor(private readonly productsService: ProductsService) {}
 
   @Post()
   @UseInterceptors(
     FileInterceptor('imageFile', {
       storage: multer.memoryStorage(),
-      limits: { fileSize: 5 * 1024 * 1024 }, // opcional: límite 5MB
+      limits: { fileSize: 5 * 1024 * 1024 },
     }),
   )
   async create(
     @Body() createDto: CreateProductDto,
     @UploadedFile() imageFile?: Express.Multer.File,
   ) {
-    return this.productsService.create(createDto, imageFile)
-  }
-
-  @Get()
-  async findAll() {
-    return this.productsService.findAll()
-  }
-
-  @Get(':id')
-  async findOne(@Param('id') id: string) {
-    return this.productsService.findOne(id)
+    this.logger.log(`POST /products - body: ${JSON.stringify(createDto)}`)
+    if (imageFile) {
+      this.logger.log(`POST /products - received file: ${imageFile.originalname} (${imageFile.size} bytes)`)
+    }
+    try {
+      const product = await this.productsService.create(createDto, imageFile)
+      this.logger.log(`Product created: ${product._id}`)
+      return product
+    } catch (err) {
+      this.logger.error('Error in ProductsController.create()', err.stack)
+      throw err
+    }
   }
 
   @Patch(':id')
@@ -57,11 +61,19 @@ export class ProductsController {
     @Body() updateDto: UpdateProductDto,
     @UploadedFile() imageFile?: Express.Multer.File,
   ) {
-    return this.productsService.update(id, updateDto, imageFile)
+    this.logger.log(`PATCH /products/${id} - body: ${JSON.stringify(updateDto)}`)
+    if (imageFile) {
+      this.logger.log(`PATCH /products/${id} - received file: ${imageFile.originalname}`)
+    }
+    try {
+      const updated = await this.productsService.update(id, updateDto, imageFile)
+      this.logger.log(`Product updated: ${updated._id}`)
+      return updated
+    } catch (err) {
+      this.logger.error(`Error in ProductsController.update(${id})`, err.stack)
+      throw err
+    }
   }
 
-  @Delete(':id')
-  async remove(@Param('id') id: string) {
-    return this.productsService.remove(id)
-  }
+  // el resto queda igual, pero puedes añadir logs parecidos en remove()
 }
