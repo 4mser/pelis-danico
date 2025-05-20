@@ -1,4 +1,3 @@
-// src/products/schemas/product.schema.ts
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
@@ -10,19 +9,25 @@ export class Product {
   name: string;
 
   @Prop()
-  image?: string;    // ruta en disco o URL
+  image?: string;    // URL en disco, en web o en S3
 
   @Prop({ default: false })
   bought: boolean;
 
   @Prop({ default: false })
-  likeNico: boolean;     // corazón de Nico
+  likeNico: boolean;
 
   @Prop({ default: false })
-  likeBarbara: boolean;  // corazón de Bárbara
+  likeBarbara: boolean;
 
   @Prop({ default: false })
-  likeBoth: boolean;     // corazón de Ambos (computed)
+  likeBoth: boolean;  // computed
+
+  @Prop()
+  storeName?: string; // nombre del local
+
+  @Prop()
+  storeLink?: string; // link de la tienda
 }
 
 export const ProductSchema = SchemaFactory.createForClass(Product);
